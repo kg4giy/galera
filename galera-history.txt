@@ -1,0 +1,70 @@
+[vagrant@node2-mysql ~]$ history 
+    1  vi /etc/sysconfig/network
+    2  sudo su
+    3  exit
+    4  sudo su
+    5  vagrant halt
+    6  exit
+    7  sudo su
+    8  vagrant halt
+    9  exit
+   10  sudo su
+   11  exit
+   12  history 
+[vagrant@node2-mysql ~]$ sudo su
+[root@node2-mysql vagrant]# history
+    1  vi /etc/sysconfig/network
+    2  vi /etc/sysconfig/network
+    3  vi /etc/yum.repos.d/galera.repo
+    4  yum install -y git wget curl
+    5  vi /etc/yum.repos.d/galera.repo
+    6  yum install -y git wget curl
+    7  wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm && rpm -Uvh epel-release-latest-6.noarch.rpm
+    8  wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm && rpm -Uvh remi-release-6*.rpm
+    9  vi /etc/yum.repos.d/remi.repo 
+   10  yum -y update mysql*
+   11  yum install -y galera-3 mysql-wsrep-5.6
+   12  vi /etc/my.cnf
+   13  clear
+   14  ifconfig
+   15  exit
+   16  ifconfig
+   17  exit
+   18  clear
+   19  ifconfig
+   20  vi /etc/my.cnf
+   21  vi /etc/my.cnf
+   22  yum install -y rsync
+   23  exit
+   24  vi /etc/my.cnf
+   25  ps axu | grep mysql
+   26  service mysql stop
+   27  vi resetpw.sql
+   28  service mysql start
+   29  mv /etc/my.cnf /tmp
+   30  service mysql start --skip-grant-tables 
+   31  mysql -u root
+   32  service mysql stop
+   33  mv /tmp/my.cnf /etc
+   34  clear
+   35  service mysql start
+   36  exit
+   37  history
+
+
+
+
+
+mysql> use mysql; update user set password=PASSWORD("nutshell") where User='root'; flush privileges;
+mysql> quit
+
+
+
+
+wsrep_cluster_name=galera
+wsrep_cluster_address="gcomm://192.168.31.10,192.168.32.10,192.168.33.10"
+wsrep_node_name=node1
+wsrep_node_address="192.168.31.10"
+
+
+SET PASSWORD = PASSWORD('new_password');

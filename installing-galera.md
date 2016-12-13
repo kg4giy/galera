@@ -1,8 +1,14 @@
 # Installing Galera for CMS
 
-**Tested on CentOS 6.7 with MySQL 5.6, Galera 3**
+**Tested on Vagrant with bento/CentOS 6.7 nodes with MySQL 5.6, Galera 3**
 
-## Base Requirements
+Source documentation includes the [Galera documentation][link-galera], upgrade [information for MySQL][link-mysql], and [resetting root passwords][link-password].
+
+[link-galera]: http://galeracluster.com/documentation-webpages/
+[link-mysql]: https://www.zerostopbits.com/how-to-upgrade-mysql-5-1-to-mysql-5-5-on-centos-6-7/
+[link-password]: https://www.howtoforge.com/setting-changing-resetting-mysql-root-passwords
+
+## Base Requirements 
 
 ### RAM and CPU
 
@@ -15,7 +21,7 @@ Galera requires the following minimum server settings:
 
 ### SELinux Settings
 
-Galera requires the following modifications to _SELinux_
+Galera requires the following modifications to _SELinux_ where it is running/active
 
 For testing
 
@@ -39,26 +45,18 @@ Depending on your profiles and existing SELinux policies, additional work may ne
 
 You will need to enable the following security groups for AWS
 
-	TCP Port 4444 Host 1
-	TCP Port 4444 Host 2
-	TCP Port 4444 Host 3
-	TCP Port 4567 Host 1
-	TCP Port 4567 Host 2
-	TCP Port 4567 Host 3
-	UDP Port 4567 Host 1
-	UDP Port 4567 Host 2
-	UDP Port 4567 Host 3
-	TCP Port 4568 Host 1
-	TCP Port 4568 Host 2
-	TCP Port 4568 Host 3
+	TCP Port 4444 
+	TCP Port 4567 
+	UDP Port 4567 
+	TCP Port 4568
 
-## Upgrading MySQL to 5.6 and installing Galera
+## Upgrading MySQL to 5.6 and installing Galera 
 
 **NOTE** Ideally all this is done with Chef/paker and the repos are removed from a gold AMI
 
 Because CentOS/RHEL 6 comes with MySQL 5.1, you must first upgrade MySQL to 5.6
 
-### Add the Repos
+### Add the Repos 
 
 We will start by modifying files in `/etc/yum.repos.d/`
 
@@ -66,7 +64,7 @@ Create a `galera.repo` file and include:
 
 	[galera]
 	name = Galera
-	baseurl = http://releases.galeracluster.com/DIST/RELEASE/ARCH
+	baseurl = http://releases.galeracluster.com/centos/6/x86_64/
 	gpgkey = http://releases.galeracluster.com/GPG-KEY-galeracluster.com
 	gpgcheck = 1
 
@@ -197,7 +195,7 @@ Finally create a `remi.repo` file and include:
 	gpgcheck=1
 	gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-remi
 
-### Upgrade MySQL
+### Upgrade MySQL 
 
 	`yum update -y mysql*`
 
@@ -205,7 +203,25 @@ Finally create a `remi.repo` file and include:
 
 	`yum install -y galera-3 mysql-wsrep-5.6`
 
-## System Configuration
+### Set the MySQL database passwords
+
+On each node:
+
+	# service mysql start --skip-grant-tables 
+	# mysql -u root
+
+Inside MySQL:
+
+	mysql> use mysql; 
+	mysql> update user set password=PASSWORD("ROOT-PASSWORD") where User='root'; 
+	mysql> flush privileges;
+	mysql> quit;
+
+And back on the node:
+
+	# service mysql stop
+
+## System Configuration 
 
 Now that everything is installed, configure `/etc/my.cnf` to include
 
@@ -234,3 +250,112 @@ Now that everything is installed, configure `/etc/my.cnf` to include
 	bind-address = 127.0.0.1
 
 in your `my.cnf` file that it is commented out or removed. Otherwise the cluster will not work. 
+
+## Cluster specific configurations
+
+### Replication configuration
+
+Additionally, these changed must be made to the `my.cnf` file per node.
+
+* wsrep_cluster_name This is the logical cluster name and should be the same on each node
+* wsrep_cluster_address This parameter is the IP definition for cluster, in a comma separated list
+* wsrep_node_name This is the logical name for each node
+* wsrep_node_address This parameter explicitly sets the IP address for the individual node. It gets used in the event that the auto-guessing does not produce desirable results.  
+
+Add/edit the `my.cnf`. Ensure the IP and node names are correct for the servers being used.
+
+	[mysqld]
+	wsrep_cluster_name=MyCluster
+	wsrep_cluster_address="gcomm://192.168.0.1,192.168.0.2,192.168.0.3"
+	wsrep_node_name=MyNode1
+	wsrep_node_address="192.168.0.1"
+
+For each node in the cluster, you must provide IP addresses for all other nodes in the cluster, using the _wsrep_cluster_address_ parameter. Cluster addresses are listed using this syntax:
+
+	<backend schema>://<cluster address>[?<option1>=<value1>[&<option2>=<value2>]]
+
+where the backend schema `gcomm` provides the group communication back-end for use in production. It takes an address and has several settings that you can enable through the option list, or by using the _wsrep_provider_options parameter_.
+
+Ensure the _wsrep_provider_ variable is correctly set
+	
+	wsrep_provider=/usr/lib64/galera-3/libgalera_smm.so
+
+## Start the cluster 
+
+On the primary node (and only on the primary node), execute:
+
+	# service mysql start --wsrep-new-cluster
+
+Output should look like this:
+
+	[root@node1-mysql vagrant]# service mysql start --wsrep-new-cluster
+	Starting MySQL.... SUCCESS! 
+	[root@node1-mysql vagrant]# ps aux | grep mysql
+	root      4504  0.0  0.1  11436   516 pts/0    S    16:41   0:00 /bin/sh /usr/bin/mysqld_safe --datadir=/var/lib/mysql --pid-file=/var/lib/mysql/node1-mysql.localdomain.pid --wsrep-new-cluster
+	mysql     4869  3.5 80.9 1728072 406200 pts/0  Sl   16:41   0:00 /usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib64/mysql/plugin --user=mysql --wsrep-new-cluster --log-error=/var/lib/mysql/node1-mysql.localdomain.err --pid-file=/var/lib/mysql/node1-mysql.localdomain.pid --socket=/var/lib/mysql/mysql.sock --wsrep_start_position=00000000-0000-0000-0000-000000000000:-1
+
+In MySQL:
+
+First you will be prompted to change/reset your password with this command:
+
+	SET PASSWORD = PASSWORD('new_password');
+
+Then: 
+
+	mysql> show status like 'wsrep_cluster_size';
+	+--------------------+-------+
+	| Variable_name      | Value |
+	+--------------------+-------+
+	| wsrep_cluster_size | 1     |
+	+--------------------+-------+
+	1 row in set (0.01 sec)
+
+On the other nodes:
+	
+	service mysql start
+
+On the node, you will see:
+
+	[root@localhost vagrant]# service mysql start
+	Starting MySQL.......... SUCCESS! 
+
+	[root@localhost vagrant]# ps axu | grep mysql
+	root      2770  0.0  0.1  11436   912 pts/0    S    19:14   0:00 /bin/sh /usr/bin/mysqld_safe --datadir=/var/lib/mysql --pid-file=/var/lib/mysql/localhost.localdomain.pid
+	mysql     3120  1.2 80.1 1728132 402596 pts/0  Sl   19:14   0:00 /usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib64/mysql/plugin --user=mysql --log-error=/var/lib/mysql/localhost.localdomain.err --pid-file=/var/lib/mysql/localhost.localdomain.pid --socket=/var/lib/mysql/mysql.sock --wsrep_start_position=00000000-0000-0000-0000-000000000000:-1
+
+On the master node, you will see:
+
+	SHOW STATUS LIKE 'wsrep_cluster_size';
+
+	+--------------------+-------+
+	| Variable_name      | Value |
+	+--------------------+-------+
+	| wsrep_cluster_size | 2     |
+	+--------------------+-------+
+
+The master node will increment as each node comes into the cluster.
+
+## Vagrant configuration additions
+
+For a multi-node configuration make the following modifications in the `Vagrantfile`:
+
+	config.vm.define :node1 do |node1|
+    	node1.vm.box = "bento/centos-6.7"
+   		node1.vm.network :private_network, ip: "192.168.31.10"
+  	end
+  
+  	config.vm.define :node2 do |node2|
+    	node2.vm.box = "bento/centos-6.7"
+    	node2.vm.network :private_network, ip: "192.168.32.10"
+  	end
+  
+  	config.vm.define :node3 do |node3|
+    	node3.vm.box = "bento/centos-6.7"
+    	node3.vm.network :private_network, ip: "192.168.33.10"
+  	end
+
+
+Vagrant cheats for repo creations
+
+	wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm && rpm -Uvh epel-release-latest-6.noarch.rpm
+    wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm && rpm -Uvh remi-release-6*.rpm
