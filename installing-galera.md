@@ -45,6 +45,7 @@ Depending on your profiles and existing SELinux policies, additional work may ne
 
 You will need to enable the following security groups for AWS
 
+	TCP Port 3306
 	TCP Port 4444 
 	TCP Port 4567 
 	UDP Port 4567 
@@ -257,18 +258,18 @@ in your `my.cnf` file that it is commented out or removed. Otherwise the cluster
 
 Additionally, these changed must be made to the `my.cnf` file per node.
 
-* wsrep_cluster_name This is the logical cluster name and should be the same on each node
-* wsrep_cluster_address This parameter is the IP definition for cluster, in a comma separated list
-* wsrep_node_name This is the logical name for each node
-* wsrep_node_address This parameter explicitly sets the IP address for the individual node. It gets used in the event that the auto-guessing does not produce desirable results.  
+* _wsrep_cluster_name_ This is the logical cluster name and should be the same on each node
+* _wsrep_cluster_address_ This parameter is the IP definition for cluster, in a comma separated list
+* _wsrep_node_name_ This is the logical name for each node
+* _wsrep_node_address_ This parameter explicitly sets the IP address for the individual node. It gets used in the event that the auto-guessing does not produce desirable results.  
 
 Add/edit the `my.cnf`. Ensure the IP and node names are correct for the servers being used.
 
 	[mysqld]
-	wsrep_cluster_name=MyCluster
-	wsrep_cluster_address="gcomm://192.168.0.1,192.168.0.2,192.168.0.3"
-	wsrep_node_name=MyNode1
-	wsrep_node_address="192.168.0.1"
+	wsrep_cluster_name=MyCluster <-- Unique per cluster
+	wsrep_cluster_address="gcomm://192.168.0.1,192.168.0.2,192.168.0.3" <-- all nodes in the cluster
+	wsrep_node_name=MyNode1 <-- Unique per node
+	wsrep_node_address="192.168.0.1" <-- Unique per node
 
 For each node in the cluster, you must provide IP addresses for all other nodes in the cluster, using the _wsrep_cluster_address_ parameter. Cluster addresses are listed using this syntax:
 
@@ -359,3 +360,140 @@ Vagrant cheats for repo creations
 
 	wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm && rpm -Uvh epel-release-latest-6.noarch.rpm
     wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm && rpm -Uvh remi-release-6*.rpm
+
+
+## Using puppet
+
+### Install puppet
+
+For a bare node, you will need to do some work
+
+Edit your `/etc/hosts` file if DNS is not enabled.
+
+Add in the puppet labs repository
+
+	yum install -y https://yum.puppetlabs.com/puppetlabs-release-el-6.noarch.rpm
+
+And add in the client
+
+	yum install -y puppet
+
+Turn on the system
+
+	puppet resource service puppet ensure=running enable=true
+    
+    puppet resource cron puppet-agent ensure=present user=root minute=30 command='/usr/bin/puppet agent --onetime --no-daemonize --splay'
+  
+    puppet agent --test --server=puppetserver.localdomain
+
+Sign the certificate on the server
+
+	puppet cert list
+
+	puppet cert --sign <host>
+
+
+### File locations
+
+Base location for the manifests:
+
+	/etc/puppetlabs/code/environments/production/modules/galera_setup_information/manifests
+
+Repository files should live in:
+
+	/etc/puppetlabs/code/environments/production/modules/galera_setup_information/files
+
+The `init.pp` for installing `Galera` by puppet (still in progress)
+
+	# Galara my.cnf configuration information
+
+	class galera_setup_information {
+	
+  	# excute the necessary repository installations
+    
+    # Add some extra tools
+    package { 'wget': 
+      ensure => installed,
+    }
+
+    package { 'git':
+      ensure => installed;
+    }
+  
+    package { 'curl':
+      ensure => installed;
+    }
+
+    # excute the necessary repository installations
+    exec { 'epel':
+      command => '/usr/bin/wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm && rpm -Uvh epel-release-latest-6.noarch.rpm',
+    }
+  
+    exec { 'remi':
+      command => '/usr/bin/wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm && rpm -Uvh remi-release-6*.rpm',
+    }
+  	
+  	# Galera repository
+ 	file { '/etc/yum.repos.d/galera.repo':
+      ensure => present,
+      path => '/etc/yum.repos.d/galera.repo',
+      mode => '0644',
+      owner => 'root',
+      source => [ "puppet:///modules/galera_setup_information/galera.repo"]
+    }
+
+  	# epel repository
+    file { '/etc/yum.repos.d/epel.repo':
+      ensure => present,
+      path => '/etc/yum.repos.d/epel.repo',
+      mode => '0644',
+      owner => 'root',
+      source => [ "puppet:///modules/galera_setup_information/epel.repo"]
+    }
+  
+    # remi.repo repository
+    file { '/etc/yum.repos.d/remi.repo':
+      ensure => present,
+      path => '/etc/yum.repos.d/remi.repo',
+      mode => '0644',
+      owner => 'root',
+      source => [ "puppet:///modules/galera_setup_information/remi.repo"]
+    }
+
+    # epel-testing repository
+    file { '/etc/yum.repos.d/epel-testing.repo':
+      ensure => present,
+      path => '/etc/yum.repos.d/epel-testing.repo',
+      mode => '0644',
+      owner => 'root',
+      source => [ "puppet:///modules/galera_setup_information/epel-testing.repo"]
+    }
+
+    # upgrade mysql
+    package { 'mysql-libs':
+      ensure => latest,
+    }  
+
+    #  exec { 'update mysql':
+    #    command => 'yum update -y mysql-libs'
+    #  }
+
+    # install the remaining packages
+    package { 'galera-3': 
+      ensure => installed,
+    }
+
+    package { 'mysql-wsrep-5.6':
+      ensure => installed,
+    }
+
+
+    #file { 'my.cnf':
+    #  ensure => present,
+    #  path => '/etc/my.cnf',
+    #  mode => '0600',
+    # owner => 'root',
+    # source => [ "puppet:///modules/galera/my.cnf" ],
+
+    # }
+    }
