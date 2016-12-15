@@ -1,5 +1,12 @@
 # Galara my.cnf configuration information
 
+## ISSUES:
+## 1) wget does not complete before package run executes. Need to find a way to wait state.
+## 2) For some reason it does not pull the remi.repo or the galera.repo on the first go around. 
+## 3) It will run if executed twice. 
+## 4) Break into two or three executions?
+## It works, but it doesn't work the way we would like.
+
 class galera_setup_information {
 	
   # Add some extra tools
@@ -15,28 +22,38 @@ class galera_setup_information {
     ensure => installed,
   }
 
-  file { '/tmp/epel-release-latest-6.noarch.rpm': 
-   ensure => present,
-   path => '/tmp/epel-release-latest-6.noarch.rpm',
-   source => [ "puppet:///modules/galera_setup_information/epel-release-latest-6.noarch.rpm"]
+  #file { '/tmp/epel-release-latest-6.noarch.rpm': 
+  # ensure => present,
+  # path => '/tmp/epel-release-latest-6.noarch.rpm',
+  # source => [ "puppet:///modules/galera_setup_information/epel-release-latest-6.noarch.rpm"]
+  #}
+
+  #file { '/tmp/remi-release-6.rpm': 
+  #  ensure => present,
+  #  path => '/tmp/remi-release-6.rpm',
+  #  source => [ "puppet:///modules/galera_setup_information/remi-release-6.rpm"]
+  #}
+
+  # excute the necessary repository installations
+  # This is an ugly method, but it does not seem to work otherwise
+  exec { 'epel-release-latest-6':
+    command => '/usr/bin/wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm && /bin/rpm -Uvh epel-release-latest-6.noarch.rpm'
   }
-
-  file { '/tmp/remi-release-6.rpm': 
-    ensure => present,
-    path => '/tmp/remi-release-6.rpm',
-    source => [ "puppet:///modules/galera_setup_information/remi-release-6.rpm"]
+  
+  exec { 'remi-release-6':
+    command => '/usr/bin/wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm && /bin/rpm -Uvh remi-release-6*.rpm'
   }
+  #package { 'epel-release-latest-6.noarch.rpm':
+  #  ensure => installed,
+  #  provider => rpm,
+  #  source => "/tmp/epel-release-latest-6.noarch.rpm",
+  #}
 
-   # excute the necessary repository installations
-   package { 'epel-release-latest-6.noarch.rpm':
-    ensure => installed,
-    source => "/tmp/epel-release-latest-6.noarch.rpm",
-   }
-
-   package { 'remi-release-6.rpm':
-     ensure => installed,
-     source => "/tmp/remi-release-6.rpm",
-   }
+  #package { 'remi-release-6.rpm':
+  #  ensure => installed,
+  #  provider => rpm,
+  #  source => "/tmp/remi-release-6.rpm",
+  #}
 
   # Galera repository
   file { '/etc/yum.repos.d/galera.repo':

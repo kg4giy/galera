@@ -392,6 +392,10 @@ Sign the certificate on the server
 
 	puppet cert --sign <host>
 
+Need to clean up a host?
+
+	puppet cert clean <host>	
+
 
 ### File locations
 
@@ -399,101 +403,105 @@ Base location for the manifests:
 
 	/etc/puppetlabs/code/environments/production/modules/galera_setup_information/manifests
 
-Repository files should live in:
+Repository files and RPMS should live in:
 
 	/etc/puppetlabs/code/environments/production/modules/galera_setup_information/files
 
 The `init.pp` for installing `Galera` by puppet (still in progress)
 
 	# Galara my.cnf configuration information
+	## ISSUES:
+	## 1) wget does not complete before package run executes. Need to find a way to wait state.
+	## 2) For some reason it does not pull the remi.repo or the galera.repo on the first go around. 
+	## 3) It will run if executed twice. 
+	## 4) Break into two or three executions?
+	## It works, but it doesn't work the way we would like.
 
 	class galera_setup_information {
 	
-  	# excute the necessary repository installations
-    
-    # Add some extra tools
-    package { 'wget': 
+  	# Add some extra tools
+  	package { 'wget': 
       ensure => installed,
-    }
+  	}
 
-    package { 'git':
-      ensure => installed;
+  	package { 'git':
+      ensure => installed,
+  	}
+  
+  	package { 'curl':
+      ensure => installed,
+  	}
+
+  	# excute the necessary repository installations
+  	# This is an ugly method, but it does not seem to work otherwise
+    exec { 'epel-release-latest-6':
+      command => '/usr/bin/wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm && /bin/rpm -Uvh epel-release-latest-6.noarch.rpm'
     }
   
-    package { 'curl':
-      ensure => installed;
+    exec { 'remi-release-6':
+     command => '/usr/bin/wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm && /bin/rpm -Uvh remi-release-6*.rpm'
     }
 
-    # excute the necessary repository installations
-    exec { 'epel':
-      command => '/usr/bin/wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm && rpm -Uvh epel-release-latest-6.noarch.rpm',
-    }
-  
-    exec { 'remi':
-      command => '/usr/bin/wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm && rpm -Uvh remi-release-6*.rpm',
-    }
-  	
   	# Galera repository
- 	file { '/etc/yum.repos.d/galera.repo':
+  	file { '/etc/yum.repos.d/galera.repo':
       ensure => present,
       path => '/etc/yum.repos.d/galera.repo',
       mode => '0644',
       owner => 'root',
       source => [ "puppet:///modules/galera_setup_information/galera.repo"]
-    }
+  	}
 
   	# epel repository
-    file { '/etc/yum.repos.d/epel.repo':
+  	file { '/etc/yum.repos.d/epel.repo':
       ensure => present,
       path => '/etc/yum.repos.d/epel.repo',
       mode => '0644',
       owner => 'root',
       source => [ "puppet:///modules/galera_setup_information/epel.repo"]
-    }
+ 	}
   
-    # remi.repo repository
-    file { '/etc/yum.repos.d/remi.repo':
+  	# remi.repo repository
+  	file { '/etc/yum.repos.d/remi.repo':
       ensure => present,
       path => '/etc/yum.repos.d/remi.repo',
       mode => '0644',
       owner => 'root',
       source => [ "puppet:///modules/galera_setup_information/remi.repo"]
-    }
+  	}
 
-    # epel-testing repository
-    file { '/etc/yum.repos.d/epel-testing.repo':
+  	# epel-testing repository
+  	file { '/etc/yum.repos.d/epel-testing.repo':
       ensure => present,
       path => '/etc/yum.repos.d/epel-testing.repo',
       mode => '0644',
       owner => 'root',
       source => [ "puppet:///modules/galera_setup_information/epel-testing.repo"]
-    }
+  	}
 
-    # upgrade mysql
-    package { 'mysql-libs':
+  	# upgrade mysql
+  	package { 'mysql-libs':
       ensure => latest,
-    }  
+  	}  
 
-    #  exec { 'update mysql':
-    #    command => 'yum update -y mysql-libs'
-    #  }
-
-    # install the remaining packages
-    package { 'galera-3': 
+  	# install the remaining packages
+  	  package { 'galera-3': 
       ensure => installed,
-    }
+  	}
 
-    package { 'mysql-wsrep-5.6':
+  	package { 'mysql-wsrep-5.6':
       ensure => installed,
-    }
+  	}
 
 
-    #file { 'my.cnf':
-    #  ensure => present,
-    #  path => '/etc/my.cnf',
-    #  mode => '0600',
-    # owner => 'root',
-    # source => [ "puppet:///modules/galera/my.cnf" ],
+  	#file { 'my.cnf':
+  	#  ensure => present,
+  	#  path => '/etc/my.cnf',
+  	#  mode => '0600',
+  	# owner => 'root',
+  	# source => [ "puppet:///modules/galera/my.cnf" ],
+  	# }
+ 	}
 
-    # }
-    }
+
+
+	
