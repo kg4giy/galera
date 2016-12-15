@@ -15,16 +15,28 @@ class galera_setup_information {
     ensure => installed,
   }
 
-  # excute the necessary repository installations
-  package { 'epel-release-latest-6.noarch.rpm':
-    ensure => installed,
-    source => "puppet:///dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm",
+  file { '/tmp/epel-release-latest-6.noarch.rpm': 
+   ensure => present,
+   path => '/tmp/epel-release-latest-6.noarch.rpm',
+   source => [ "puppet:///modules/galera_setup_information/epel-release-latest-6.noarch.rpm"]
   }
 
-  package { 'remi-release-6.rpm':
-    ensure => installed,
-    source => "puppet:///rpms.famillecollet.com/enterprise/remi-release-6.rpm",
+  file { '/tmp/remi-release-6.rpm': 
+    ensure => present,
+    path => '/tmp/remi-release-6.rpm',
+    source => [ "puppet:///modules/galera_setup_information/remi-release-6.rpm"]
   }
+
+   # excute the necessary repository installations
+   package { 'epel-release-latest-6.noarch.rpm':
+    ensure => installed,
+    source => "/tmp/epel-release-latest-6.noarch.rpm",
+   }
+
+   package { 'remi-release-6.rpm':
+     ensure => installed,
+     source => "/tmp/remi-release-6.rpm",
+   }
 
   # Galera repository
   file { '/etc/yum.repos.d/galera.repo':
@@ -67,10 +79,6 @@ class galera_setup_information {
     ensure => latest,
   }  
 
-#  exec { 'update mysql':
-#    command => 'yum update -y mysql-libs'
-#  }
-
   # install the remaining packages
   package { 'galera-3': 
     ensure => installed,
@@ -87,9 +95,9 @@ class galera_setup_information {
   #  mode => '0600',
   # owner => 'root',
   # source => [ "puppet:///modules/galera/my.cnf" ],
-
   # }
 
 
 
 }
+
