@@ -10,18 +10,21 @@
 class galera_setup_information {
 	
   # Add some extra tools
-  package { 'wget': 
-    ensure => installed,
-  }
+  #package { 'wget': 
+  #  ensure => installed,
+  #}
 
-  package { 'git':
-    ensure => installed,
-  }
+  #package { 'git':
+  #  ensure => installed,
+  #}
   
-  package { 'curl':
-    ensure => installed,
-  }
+  #package { 'curl':
+  # ensure => installed,
+  #}
 
+  package { ensure => 'installed' }
+  $tools = [ 'wget', 'git', 'curl' ]
+  package { $tools: }
   #file { '/tmp/epel-release-latest-6.noarch.rpm': 
   # ensure => present,
   # path => '/tmp/epel-release-latest-6.noarch.rpm',
