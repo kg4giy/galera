@@ -1,4 +1,4 @@
-# Installing Galera for CMS
+# Installing Galera on MySQL
 
 **Tested on Vagrant with bento/CentOS 6.7 nodes with MySQL 5.6, Galera 3**
 
