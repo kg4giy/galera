@@ -10,53 +10,39 @@
 class galera_setup_information {
 	
   # Add some extra tools
-  #package { 'wget': 
-  #  ensure => installed,
-  #}
+  package { 'wget': 
+    ensure => installed,
+  }
 
-  #package { 'git':
-  #  ensure => installed,
-  #}
+  package { 'git':
+    ensure => installed,
+  }
   
-  #package { 'curl':
-  # ensure => installed,
-  #}
-
-  package { ensure => 'installed' }
-  $tools = [ 'wget', 'git', 'curl' ]
-  package { $tools: }
-  #file { '/tmp/epel-release-latest-6.noarch.rpm': 
-  # ensure => present,
-  # path => '/tmp/epel-release-latest-6.noarch.rpm',
-  # source => [ "puppet:///modules/galera_setup_information/epel-release-latest-6.noarch.rpm"]
-  #}
-
-  #file { '/tmp/remi-release-6.rpm': 
-  #  ensure => present,
-  #  path => '/tmp/remi-release-6.rpm',
-  #  source => [ "puppet:///modules/galera_setup_information/remi-release-6.rpm"]
-  #}
-
-  # excute the necessary repository installations
-  # This is an ugly method, but it does not seem to work otherwise
+  package { 'curl':
+    ensure => installed,
+  }
+  
+  # excute the necessary repository grabs (file does not do remote http calls)
+  # This is an ugly method, but it does not work otherwise
   exec { 'epel-release-latest-6':
-    command => '/usr/bin/wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm && /bin/rpm -Uvh epel-release-latest-6.noarch.rpm'
+    command => '/usr/bin/wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm'
   }
   
   exec { 'remi-release-6':
-    command => '/usr/bin/wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm && /bin/rpm -Uvh remi-release-6*.rpm'
+    command => '/usr/bin/wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm'
   }
-  #package { 'epel-release-latest-6.noarch.rpm':
-  #  ensure => installed,
-  #  provider => rpm,
-  #  source => "/tmp/epel-release-latest-6.noarch.rpm",
-  #}
+  
+  package { 'epel-release-latest-6.noarch.rpm':
+    ensure => installed,
+    provider => rpm,
+    source => "/tmp/epel-release-latest-6.noarch.rpm",
+  }
 
-  #package { 'remi-release-6.rpm':
-  #  ensure => installed,
-  #  provider => rpm,
-  #  source => "/tmp/remi-release-6.rpm",
-  #}
+  package { 'remi-release-6.rpm':
+    ensure => installed,
+    provider => rpm,
+    source => "/tmp/remi-release-6.rpm",
+  }
 
   # Galera repository
   file { '/etc/yum.repos.d/galera.repo':
