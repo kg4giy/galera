@@ -12,8 +12,8 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.provision "puppet" do |puppet|
-  end
+  # config.vm.provision "puppet" do |puppet|
+  # end
   
   config.vm.define :node1 do |node1|
     node1.vm.box = "bento/centos-6.7"
@@ -38,6 +38,16 @@ Vagrant.configure("2") do |config|
   config.vm.define :node5 do |node5|
     node5.vm.box = "bento/centos-6.7"
     node5.vm.network :private_network, ip: "192.168.31.25"
+  end
+
+  config.vm.define :node6 do |node6|
+    node6.vm.box = "bento/centos-6.7"
+    node6.vm.network :private_network, ip: "192.168.32.20"
+  end
+
+  config.vm.define :chef do |chef|
+    chef.vm.box = "bento/centos-6.7"
+    chef.vm.network :private_network, ip: "192.168.32.25"
   end
 
   config.vm.define :puppet do |puppet|
