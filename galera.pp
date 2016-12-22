@@ -1,4 +1,8 @@
-# Galara my.cnf configuration information
+# Galara puppet configuration information
+# depricated 20 December 2016
+# Retained for historic reasons
+
+
 
 class galera_setup_information {
 	
