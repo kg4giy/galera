@@ -71,6 +71,18 @@ class galera_install_rpm {
     source => "/tmp/remi-release-6.rpm",
   }
  
+ augeas { "remi.repo":
+    require => Package['remi-release-6.rpm'],
+    context => "/files/etc/yum.repos.d/remi.repo/remi/",
+    changes => [
+                    "set enabled 1",
+                  ],
+  }
+  package{ 'augeas':
+    ensure => installed,
+  } 
+
+
   # remi.repo repository
   #file { '/etc/yum.repos.d/remi.repo':
   #  ensure => present,
